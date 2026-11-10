@@ -1,0 +1,2 @@
+{ "name": "ege-ru-tools", "private": true, "version": "1.0.0",
+  "dependencies": { "@fontsource-variable/golos-text": "^5.2.0", "@fontsource-variable/literata": "^5.2.0", "sharp": "^0.33.0" } }
