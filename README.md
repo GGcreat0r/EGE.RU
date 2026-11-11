@@ -1,6 +1,10 @@
 # Запоминалка: русский язык, ЕГЭ
 
-Сайт: https://ege-ru.egehelp.workers.dev (Cloudflare Workers, обновляется сам после каждого push в `main`).
+Сайт: https://ggcreat0r.github.io/EGE.RU/ (GitHub Pages).
+
+Второй адрес: https://ege-ru.egehelp.workers.dev (Cloudflare Workers; из России без VPN может не открываться).
+
+Оба адреса обновляются сами после каждого push в `main`. Прогресс у каждого адреса свой.
 
 Тренажёр в браузере с тремя вкладками:
 

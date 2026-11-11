@@ -165,6 +165,8 @@ h1, h2, p { margin: 0; }
 .fb .right { font: 500 24px/1.35 var(--word); margin-top: 4px; white-space: normal; }
 .fb .right .v.ok, .fb .right b { color: var(--ok); font-weight: inherit; }
 .fb .note { color: var(--muted); font-size: 14px; margin-top: 8px; }
+.fb .note .caps { color: var(--ink); white-space: nowrap; }
+.fb .note .caps b { color: var(--ok); font-weight: 600; }
 .fb .note .word { font-size: 16px; white-space: normal; color: var(--ink); }
 .fb .note .word b { color: var(--ok); font-weight: 600; }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
@@ -358,6 +360,13 @@ function gapHTML(w, gaps, fill) {
   });
   return out;
 }
+// «Ударение падает на вторую «а»: создалА» — если буква в слове не одна, уточняем, какая по счёту
+const ORD = ['первую', 'вторую', 'третью', 'четвёртую', 'пятую'];
+function stressNote(c) {
+  const l = c.w[c.s], pos = [...c.w].map((ch, i) => ch === l ? i : -1).filter(i => i >= 0), k = pos.indexOf(c.s);
+  const which = pos.length < 2 ? '' : (pos.length > 2 && k === pos.length - 1 ? 'последнюю' : ORD[k] || (k + 1) + '-ю') + ' ';
+  return `Ударение падает на ${which}«${esc(l)}»: <span class="caps">${esc(c.w.slice(0, c.s))}<b>${esc(l.toUpperCase())}</b>${esc(c.w.slice(c.s + 1))}</span>`;
+}
 const gapsOf = (tab, c) => tab === 'prepri' ? [c.g] : c.g;
 const answerHTML = (tab, c) => tab === 'udar' ? udarHTML(c, { right: c.s }) : gapHTML(c.w, gapsOf(tab, c), (j, ch) => ({ tag: 'b', ch }));
 
@@ -510,7 +519,7 @@ function check() {
   });
   // пояснение
   let html = `<p class="verdict">${ok ? 'Верно' : 'Неверно'}</p>`;
-  if (!ok) html += tab === 'udar' ? `<p class="note">Ударение падает на «${esc(c.w[c.s])}»</p>` : `<p class="right word">${answerHTML(tab, c)}</p>`;
+  if (!ok) html += tab === 'udar' ? `<p class="note">${stressNote(c)}</p>` : `<p class="right word">${answerHTML(tab, c)}</p>`;
   const notes = [];
   if (tab === 'udar') { if (c.r) notes.push(esc(c.r)); if (c.x) notes.push(esc(c.x)); }
   if (tab === 'slov' && c.d) notes.push('<span class="word">' + c.d.map(d => gapHTML(d.w, d.g, (j, ch) => ({ tag: 'b', ch }))).join(', ') + '</span>');
