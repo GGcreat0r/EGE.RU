@@ -296,7 +296,8 @@ const store = {
 };
 
 // ---------- данные ----------
-DATA.udar.forEach(c => c.id = c.w + '|' + c.s + '|' + c.p);
+// слово с тем же ударением может стоять в двух частях речи (красивее): у таких карточек общий id и общий прогресс
+{ const first = {}; DATA.udar.forEach(c => { const k = c.w + '|' + c.s; c.id = first[k] || (first[k] = k + '|' + c.p); }); }
 DATA.prepri.forEach(c => c.id = c.w);
 DATA.slov.forEach(c => c.id = c.w + (c.c || ''));
 
@@ -323,8 +324,10 @@ const learned = (tab, c) => { const s = STATS[tab][c.id]; return !!s && s.l.leng
 
 function poolOf(tab) {
   const F = FILTERS[tab];
-  return F ? DATA[tab].filter(c => S[tab][F.key].includes(F.of(c))) : DATA[tab];
+  return uniq(F ? DATA[tab].filter(c => S[tab][F.key].includes(F.of(c))) : DATA[tab]);
 }
+// одно и то же слово не попадает в выборку дважды
+function uniq(list) { const seen = new Set(); return list.filter(c => !seen.has(c.id) && seen.add(c.id)); }
 function countOptions(tab, n) {
   let opts;
   if (tab === 'udar') opts = [[.1, '10%'], [.25, '25%'], [.5, '50%'], [1, 'все']].map(([f, l]) => [Math.max(1, Math.round(n * f)), l]);
@@ -391,7 +394,7 @@ function renderHome() {
       return `<button class="chip" data-i="${i}" aria-pressed="${st[F.key].includes(k)}" aria-label="${esc(F.hint(k))}, ${n}">${esc(F.label(k))} <small>${n}</small></button>`; }).join('');
     $('posAll').textContent = st[F.key].length === F.all.length ? 'Снять все' : 'Выбрать все';
   }
-  const pool = poolOf(tab), all = DATA[tab];
+  const pool = poolOf(tab), all = uniq(DATA[tab]);
   // количество
   const opts = countOptions(tab, pool.length);
   if (st.cnt >= opts.length) st.cnt = opts.length - 1;
