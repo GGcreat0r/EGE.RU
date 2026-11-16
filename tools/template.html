@@ -117,6 +117,9 @@ h1, h2, p { margin: 0; }
 .chip small { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .chip[aria-pressed="true"] small { color: inherit; opacity: .6; }
+.chips.letters { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); }
+.chips.letters .chip { justify-content: center; padding: 9px 0; gap: 5px; font-weight: 600; }
+.chips.letters .chip small { font-weight: 400; font-size: 12px; }
 
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
 .seg button { padding: 10px 4px 9px; border-radius: 14px; border: 1px solid var(--line-strong); text-align: center; line-height: 1.2; transition: background-color .15s, color .15s, border-color .15s; }
@@ -220,7 +223,7 @@ h1, h2, p { margin: 0; }
   <p class="stats" id="stats"></p>
 
   <div class="block" id="posBlock">
-    <div class="block-head"><h2>Части речи</h2><button class="link" id="posAll"></button></div>
+    <div class="block-head"><h2 id="filterTitle">Части речи</h2><button class="link" id="posAll"></button></div>
     <div class="chips" id="chips"></div>
   </div>
 
@@ -297,27 +300,36 @@ DATA.udar.forEach(c => c.id = c.w + '|' + c.s + '|' + c.p);
 DATA.prepri.forEach(c => c.id = c.w);
 DATA.slov.forEach(c => c.id = c.w + (c.c || ''));
 
+// ---------- фильтр на главной: части речи у ударений, первая буква у словарных ----------
+const LETTERS = [...new Set(DATA.slov.map(c => c.w[0]))].sort((a, b) => a.localeCompare(b, 'ru'));
+const FILTERS = {
+  udar: { title: 'Части речи',   key: 'pos',     all: DATA.pos.map((_, i) => i), label: i => DATA.pos[i],    of: c => c.p,    hint: i => DATA.pos[i],                      empty: 'Выбери хотя бы одну часть речи.' },
+  slov: { title: 'Первая буква', key: 'letters', all: LETTERS,                   label: l => l.toUpperCase(), of: c => c.w[0], hint: l => 'Слова на ' + l.toUpperCase(), empty: 'Выбери хотя бы одну букву.' },
+};
+
 // ---------- настройки и прогресс ----------
 const saved = store.get('settings', {});
 const S = {
   tab: TABS[saved.tab] ? saved.tab : 'udar',
   udar:   Object.assign({ pos: DATA.pos.map((_, i) => i), cnt: 0, repeat: true }, saved.udar),
   prepri: Object.assign({ cnt: 0, repeat: true }, saved.prepri),
-  slov:   Object.assign({ cnt: 0, repeat: true, hard: false }, saved.slov),
+  slov:   Object.assign({ letters: LETTERS.slice(), cnt: 0, repeat: true, hard: false }, saved.slov),
 };
+for (const tab in FILTERS) { const F = FILTERS[tab], v = S[tab][F.key]; S[tab][F.key] = F.all.filter(k => Array.isArray(v) && v.includes(k)); }
 const STATS = Object.assign({ udar: {}, prepri: {}, slov: {} }, store.get('stats', {}));
 const save = () => { store.set('settings', S); store.set('stats', STATS); };
 // выучено = в последний раз слово названо верно с первой попытки
 const learned = (tab, c) => { const s = STATS[tab][c.id]; return !!s && s.l.length > 0 && !!s.l[s.l.length - 1]; };
 
 function poolOf(tab) {
-  return tab === 'udar' ? DATA.udar.filter(c => S.udar.pos.includes(c.p)) : DATA[tab];
+  const F = FILTERS[tab];
+  return F ? DATA[tab].filter(c => S[tab][F.key].includes(F.of(c))) : DATA[tab];
 }
 function countOptions(tab, n) {
   let opts;
   if (tab === 'udar') opts = [[.1, '10%'], [.25, '25%'], [.5, '50%'], [1, 'все']].map(([f, l]) => [Math.max(1, Math.round(n * f)), l]);
   else if (tab === 'prepri') opts = [[15, ''], [30, ''], [n, 'все']];
-  else opts = [[25, ''], [50, ''], [100, ''], [n, 'все']];
+  else opts = [...[10, 25, 50, 100].filter(v => v < n).slice(-3).map(v => [v, '']), [n, 'все']];
   return opts.filter(([v], i) => i === opts.length - 1 || v < n);
 }
 
@@ -368,20 +380,23 @@ function renderHome() {
   if (tab === 'udar') { const c = DATA.udar.find(x => x.w === 'звонит') || DATA.udar[0]; $('sample').innerHTML = udarHTML(c, { show: c.s }); }
   else if (tab === 'prepri') { const c = DATA.prepri.find(x => x.w === 'президент') || DATA.prepri[0]; $('sample').innerHTML = gapHTML(c.w, [c.g], (j, ch) => ({ ch })); }
   else { const c = DATA.slov.find(x => x.w === 'абонемент') || DATA.slov[0]; $('sample').innerHTML = gapHTML(c.w, c.g, (j, ch) => j === 0 ? { ch } : { ch: '', cls: 'on' }); }
-  $('lead').textContent = T.lead;
-  // части речи
-  $('posBlock').hidden = tab !== 'udar';
-  if (tab === 'udar') {
-    $('chips').innerHTML = DATA.pos.map((name, i) =>
-      `<button class="chip" data-p="${i}" aria-pressed="${st.pos.includes(i)}">${esc(name)} <small>${DATA.udar.filter(c => c.p === i).length}</small></button>`).join('');
-    $('posAll').textContent = st.pos.length === DATA.pos.length ? 'Снять все' : 'Выбрать все';
+  $('lead').textContent = T.lead; fit($('sample'), 54);
+  // фильтр: части речи или первая буква
+  const F = FILTERS[tab];
+  $('posBlock').hidden = !F;
+  if (F) {
+    $('filterTitle').textContent = F.title;
+    $('chips').className = 'chips' + (tab === 'slov' ? ' letters' : '');
+    $('chips').innerHTML = F.all.map((k, i) => { const n = DATA[tab].filter(c => F.of(c) === k).length;
+      return `<button class="chip" data-i="${i}" aria-pressed="${st[F.key].includes(k)}" aria-label="${esc(F.hint(k))}, ${n}">${esc(F.label(k))} <small>${n}</small></button>`; }).join('');
+    $('posAll').textContent = st[F.key].length === F.all.length ? 'Снять все' : 'Выбрать все';
   }
   const pool = poolOf(tab), all = DATA[tab];
   // количество
   const opts = countOptions(tab, pool.length);
   if (st.cnt >= opts.length) st.cnt = opts.length - 1;
   $('cnt').innerHTML = pool.length ? opts.map(([v, l], i) => `<button data-i="${i}" aria-pressed="${st.cnt === i}"><b>${v}</b><small>${l}</small></button>`).join('')
-                                   : '<p class="lead" style="margin:0">Выбери хотя бы одну часть речи.</p>';
+                                   : `<p class="lead" style="margin:0">${F ? F.empty : ''}</p>`;
   // статистика
   let r = 0, w = 0; Object.values(STATS[tab]).forEach(s => { r += s.r; w += s.w; });
   $('stats').innerHTML = `Выучено <b>${all.filter(c => learned(tab, c)).length}</b> из ${all.length}` + (r + w ? `, точность <b>${Math.round(100 * r / (r + w))}%</b>` : '');
@@ -393,10 +408,11 @@ function renderHome() {
 }
 $('tabs').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.tab = b.dataset.tab; save(); renderHome(); };
 $('chips').onclick = e => {
-  const b = e.target.closest('.chip'); if (!b) return; const i = +b.dataset.p, st = S.udar;
-  st.pos = st.pos.includes(i) ? st.pos.filter(x => x !== i) : [...st.pos, i].sort((a, b) => a - b); save(); renderHome();
+  const b = e.target.closest('.chip'), F = FILTERS[S.tab]; if (!b || !F) return;
+  const k = F.all[+b.dataset.i], st = S[S.tab], cur = st[F.key];
+  st[F.key] = F.all.filter(x => x === k ? !cur.includes(k) : cur.includes(x)); save(); renderHome();
 };
-$('posAll').onclick = () => { S.udar.pos = S.udar.pos.length === DATA.pos.length ? [] : DATA.pos.map((_, i) => i); save(); renderHome(); };
+$('posAll').onclick = () => { const F = FILTERS[S.tab], st = S[S.tab]; st[F.key] = st[F.key].length === F.all.length ? [] : F.all.slice(); save(); renderHome(); };
 $('cnt').onclick = e => { const b = e.target.closest('button'); if (!b) return; S[S.tab].cnt = +b.dataset.i; save(); renderHome(); };
 $('swRepeat').onclick = () => { S[S.tab].repeat = !S[S.tab].repeat; save(); renderHome(); };
 $('swHard').onclick = () => { S.slov.hard = !S.slov.hard; save(); renderHome(); };
@@ -448,8 +464,8 @@ function drawWord() {
   else el.innerHTML = gapHTML(c.w, gapsOf(tab, c), j => ({ ch: Q.ans[j] || '', cls: j === Q.active && (Q.ans.length > 1 || Q.ans[j] == null) ? 'on' : '' }));
   fit(el);
 }
-function fit(el) {           // длинные слова уменьшаются, чтобы поместиться в строку
-  let size = 60; el.style.fontSize = size + 'px';
+function fit(el, max = 60) {  // длинные слова уменьшаются, чтобы поместиться в строку
+  let size = max; el.style.fontSize = size + 'px';
   while (el.scrollWidth > el.clientWidth && size > 22) { size -= 2; el.style.fontSize = size + 'px'; }
 }
 function keyLetters() {
@@ -572,9 +588,9 @@ document.addEventListener('keydown', e => {
     else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { Q.active = Math.max(0, Math.min(Q.ans.length - 1, Q.active + (e.key === 'ArrowRight' ? 1 : -1))); drawWord(); drawKeys(); }
   }
 });
-addEventListener('resize', () => { if (Q && !$('quiz').hidden) fit($('word')); });
+addEventListener('resize', () => { if (Q && !$('quiz').hidden) fit($('word')); else if (!$('home').hidden) fit($('sample'), 54); });
 if (window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--bar-h', $('bar').offsetHeight + 'px')).observe($('bar'));
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (Q && !$('quiz').hidden) fit($('word')); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (Q && !$('quiz').hidden) fit($('word')); else if (!$('home').hidden) fit($('sample'), 54); });
 
 renderHome();
 if ('serviceWorker' in navigator && location.protocol === 'https:') { try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) {} }
