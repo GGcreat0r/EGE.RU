@@ -14,6 +14,20 @@
 // тема ставится до отрисовки, чтобы страница не мигала
 try { var t = JSON.parse(localStorage.getItem('egeru_theme')); if (t === 'dark') document.documentElement.dataset.theme = 'dark'; } catch (e) {}
 </script>
+<!-- Yandex.Metrika counter: считает посещения; включается только на опубликованном сайте (https) -->
+<script>
+if (location.protocol === 'https:') {
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=114283729', 'ym');
+
+    ym(114283729, 'init', {ssr:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+}
+</script>
+<!-- /Yandex.Metrika counter -->
 <style>
 /*FONTS*/
 :root {
@@ -198,6 +212,7 @@ h1, h2, p { margin: 0; }
 </style>
 </head>
 <body>
+<noscript><div><img src="https://mc.yandex.ru/watch/114283729" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
 <div class="app">
 
 <section id="home">
@@ -244,6 +259,7 @@ h1, h2, p { margin: 0; }
   <div class="foot">
     <button class="link" id="reset">Сбросить прогресс</button>
     <p>Слова взяты из трёх списков для подготовки к ЕГЭ: орфоэпический минимум, приставки пре- и при-, словарные слова ФИПИ. Буква «ё» в словах заменена на «е».</p>
+    <p>Посещения сайта считает Яндекс Метрика.</p>
   </div>
 </section>
 
